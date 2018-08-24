@@ -14,8 +14,6 @@ class InfoExtractor {
     var groupNumberRegex = "^[0-9]{8}$"
     var memberIdRegex = "^[A-Z]+[0-9]{7,9}$"
     var memberIdNumbersRegex = "[0-9]{7,9}$"
-    //Visa regex
-    var creditCardRegex = "^[0-9]{16}$"
     
     func matches(for regex: String, in text: String) -> [String] {
         do {
