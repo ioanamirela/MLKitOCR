@@ -22,7 +22,6 @@ class CameraViewController: UIViewController {
     private var matched = false
     private var matchedGroupNumber = ""
     private var matchedMemberID = ""
-    private var matchedCreditCard = ""
     private var message = ""
     private var lastTime = Date()
     private var cameraView: CameraView {
@@ -66,10 +65,10 @@ class CameraViewController: UIViewController {
     }
     
     private func retry(){
+        //reset vars to restart detection/recognition
         matched = false
         matchedMemberID = ""
         matchedGroupNumber = ""
-        matchedCreditCard = ""
         message = ""
     }
     
@@ -93,12 +92,6 @@ class CameraViewController: UIViewController {
             var allText = ""
             for feature in features {
                 guard feature is VisionTextBlock, let block = feature as? VisionTextBlock else { continue }
-                /*let points = self.convertedPoints(from: block.cornerPoints, width: width, height: height)
-                UIUtilities.addShape(
-                    withPoints: points,
-                    to: self.annotationOverlayView,
-                    color: UIColor.purple
-                )*/
                 allText += feature.text + "\n"
                 for line in block.lines {
                     let points = self.convertedPoints(from: line.cornerPoints, width: width, height: height)
@@ -107,14 +100,6 @@ class CameraViewController: UIViewController {
                         to: self.annotationOverlayView,
                         color: UIColor.white
                     )
-                    let creditCardMatches = self.extractor.matches(for: self.extractor.creditCardRegex, in: line.text.replacingOccurrences(of: " ", with: "") as String)
-                    
-                    if !creditCardMatches.isEmpty{
-                        self.matchedCreditCard = creditCardMatches.first!
-                        self.matched = true
-                        self.message += "Credit Card Number: " + self.matchedCreditCard
-                        self.showResults(message: self.message)
-                    }
                     
                     for element in line.elements {
                         
@@ -127,11 +112,6 @@ class CameraViewController: UIViewController {
                         let convertedRect = self.cameraView.previewLayer.layerRectConverted(
                             fromMetadataOutputRect: normalizedRect
                         )
-                        /*UIUtilities.addRectangle(
-                            convertedRect,
-                            to: self.annotationOverlayView,
-                            color: UIColor.white
-                        )*/
                         let label = UILabel(frame: convertedRect)
                         label.text = element.text
                         label.adjustsFontSizeToFitWidth = true
@@ -140,7 +120,7 @@ class CameraViewController: UIViewController {
                         let groupNumberMatches = self.extractor.matches(for: self.extractor.groupNumberRegex, in: element.text as String)
                         let memberIDMatches = self.extractor.matches(for: self.extractor.memberIdRegex, in: element.text as String)
                         
-                        
+                       
                         
                         if !groupNumberMatches.isEmpty {
                             self.matchedGroupNumber = groupNumberMatches.first!
@@ -154,7 +134,7 @@ class CameraViewController: UIViewController {
                             self.matched = true
                             self.message += "Member ID: " + self.matchedMemberID
                             self.message += "\nGroup number: " + self.matchedGroupNumber
-                            print(allText)
+                            //print(allText)
                             self.showResults(message: self.message)
                         }
                     }
@@ -296,8 +276,12 @@ extension CameraViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
         from connection: AVCaptureConnection
         ) {
         
+         /* 
+            Limit fps to reduce CPU usage, no need to analyse every frame
+            with 25-30 frames CPU usage goes up to over 300% and heats up the phone
+            reduced to about 5fps decreases CPU usage to 85%
+        */ 
         if Date().timeIntervalSince(lastTime) < Double(0.4) {
-            // Limit fps to reduce CPU usage
             return
         }
         
@@ -307,6 +291,7 @@ extension CameraViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
             print("Failed to get image buffer from sample buffer.")
             return
         }
+        // we don't want to run recognition if a member id/group id pattern has been matched 
         if matched {
             return
         }
